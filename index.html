@@ -7,310 +7,65 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --surface2: #242424;
-    --border: #2e2e2e;
-    --accent: #c8f05a;
-    --accent-dim: #8aab2e;
-    --text: #f0f0f0;
-    --muted: #888;
-    --danger: #ff5f5f;
-    --success: #5fcc8a;
-    --mono: 'DM Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
+    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #242424; --border: #2e2e2e;
+    --accent: #c8f05a; --accent-dim: #8aab2e; --text: #f0f0f0; --muted: #888;
+    --danger: #ff5f5f; --success: #5fcc8a; --mono: 'DM Mono', monospace; --sans: 'DM Sans', sans-serif;
   }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 3rem 1.5rem;
-  }
-
-  header {
-    text-align: center;
-    margin-bottom: 2.5rem;
-  }
-
-  .logo {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 0.75rem;
-  }
-
-  h1 {
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    font-weight: 300;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
-    color: var(--text);
-  }
-
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 3rem 1.5rem; }
+  header { text-align: center; margin-bottom: 2.5rem; }
+  .logo { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem; }
+  h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 300; letter-spacing: -0.03em; line-height: 1.1; color: var(--text); }
   h1 span { color: var(--accent); }
-
-  .tagline {
-    margin-top: 0.75rem;
-    font-size: 15px;
-    color: var(--muted);
-    font-weight: 300;
-  }
-
-  .card {
-    width: 100%;
-    max-width: 680px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .section-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.75rem;
-    display: block;
-  }
-
-  .api-key-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .api-key-row input {
-    flex: 1;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-  }
+  .tagline { margin-top: 0.75rem; font-size: 15px; color: var(--muted); font-weight: 300; }
+  .card { width: 100%; max-width: 680px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 1.25rem; }
+  .section-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: block; }
+  .api-key-row { display: flex; gap: 8px; align-items: center; }
+  .api-key-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: var(--mono); font-size: 13px; color: var(--text); outline: none; transition: border-color 0.2s; }
   .api-key-row input:focus { border-color: var(--accent); }
-
-  .save-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 16px;
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
+  .save-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
   .save-btn:hover { border-color: var(--accent); color: var(--accent); }
   .save-btn.saved { color: var(--success); border-color: var(--success); }
-
-  .key-hint {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 8px;
-    line-height: 1.6;
-  }
+  .key-hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
   .key-hint a { color: var(--accent-dim); text-decoration: none; }
   .key-hint a:hover { text-decoration: underline; }
-
-  .url-row {
-    display: flex;
-    gap: 8px;
-  }
-
-  .url-row input {
-    flex: 1;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 14px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-    font-family: var(--sans);
-  }
+  .url-row { display: flex; gap: 8px; }
+  .url-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-size: 14px; color: var(--text); outline: none; transition: border-color 0.2s; font-family: var(--sans); }
   .url-row input:focus { border-color: var(--accent); }
   .url-row input::placeholder { color: var(--muted); }
-
-  .go-btn {
-    background: var(--accent);
-    border: none;
-    border-radius: 8px;
-    padding: 12px 24px;
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 500;
-    color: #0f0f0f;
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
+  .go-btn { background: var(--accent); border: none; border-radius: 8px; padding: 12px 24px; font-family: var(--mono); font-size: 13px; font-weight: 500; color: #0f0f0f; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .go-btn:hover { background: #d4f76a; transform: translateY(-1px); }
   .go-btn:active { transform: translateY(0); }
   .go-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-  .options-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-top: 1.25rem;
-  }
-
-  select {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-size: 13px;
-    color: var(--text);
-    font-family: var(--sans);
-    outline: none;
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-color: var(--surface2);
-  }
+  .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.25rem; }
+  select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); font-family: var(--sans); outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-color: var(--surface2); }
   select:focus { border-color: var(--accent); }
-
   .speed-block { margin-top: 1.25rem; }
   .speed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
   .speed-val { font-family: var(--mono); font-size: 13px; color: var(--accent); }
-
-  input[type=range] {
-    width: 100%;
-    height: 4px;
-    appearance: none;
-    background: var(--border);
-    border-radius: 2px;
-    outline: none;
-    cursor: pointer;
-  }
-  input[type=range]::-webkit-slider-thumb {
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-    transition: transform 0.1s;
-  }
+  input[type=range] { width: 100%; height: 4px; appearance: none; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); cursor: pointer; transition: transform 0.1s; }
   input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
-
-  .output-card {
-    width: 100%;
-    max-width: 680px;
-    display: none;
-  }
-
-  .summary-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 2rem;
-    font-size: 16px;
-    line-height: 1.8;
-    color: var(--text);
-    margin-bottom: 1rem;
-  }
-
-  .controls {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .ctrl-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 18px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
+  .output-card { width: 100%; max-width: 680px; display: none; }
+  .summary-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; font-size: 16px; line-height: 1.8; color: var(--text); margin-bottom: 1rem; }
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .ctrl-btn { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 18px; font-family: var(--mono); font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
   .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
   .ctrl-btn.primary { background: var(--accent); color: #0f0f0f; border-color: var(--accent); font-weight: 500; }
   .ctrl-btn.primary:hover { background: #d4f76a; }
   .ctrl-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .ctrl-btn svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
-
-  .status-pill {
-    margin-left: auto;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-  }
+  .status-pill { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.1em; }
   .status-pill.active { color: var(--accent); }
-
-  .error-msg {
-    font-size: 13px;
-    color: var(--danger);
-    margin-top: 0.75rem;
-    display: none;
-    font-family: var(--mono);
-    line-height: 1.5;
-  }
-
-  .loader {
-    display: none;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 0.75rem;
-  }
+  .error-msg { font-size: 13px; color: var(--danger); margin-top: 0.75rem; display: none; font-family: var(--mono); line-height: 1.5; }
+  .loader { display: none; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 0.75rem; }
   .loader.show { display: flex; }
-  .dot {
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    animation: pulse 1.2s ease-in-out infinite;
-  }
+  .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }
   .dot:nth-child(2) { animation-delay: 0.2s; }
   .dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes pulse { 0%,80%,100%{opacity:0.2;transform:scale(0.8)} 40%{opacity:1;transform:scale(1)} }
-
-  footer {
-    margin-top: 3rem;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: #444;
-    text-align: center;
-    letter-spacing: 0.1em;
-  }
-
-  @media (max-width: 500px) {
-    .options-grid { grid-template-columns: 1fr; }
-    .url-row { flex-direction: column; }
-  }
+  footer { margin-top: 3rem; font-family: var(--mono); font-size: 11px; color: #444; text-align: center; letter-spacing: 0.1em; }
+  @media (max-width: 500px) { .options-grid { grid-template-columns: 1fr; } .url-row { flex-direction: column; } }
 </style>
 </head>
 <body>
@@ -321,7 +76,6 @@
   <p class="tagline">Paste a URL — get a summary read aloud, at your speed.</p>
 </header>
 
-<!-- API Key Card -->
 <div class="card">
   <span class="section-label">Gemini API Key (free — no credit card needed)</span>
   <div class="api-key-row">
@@ -329,13 +83,12 @@
     <button class="save-btn" id="saveKeyBtn" onclick="saveKey()">Save</button>
   </div>
   <p class="key-hint">
-    Your key is saved only in this browser. Get a free key at
+    Saved only in this browser. Get a free key at
     <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>
     — no credit card required.
   </p>
 </div>
 
-<!-- Main Card -->
 <div class="card">
   <span class="section-label">Page URL</span>
   <div class="url-row">
@@ -374,7 +127,6 @@
   <div class="error-msg" id="errorMsg"></div>
 </div>
 
-<!-- Output -->
 <div class="output-card" id="outputCard">
   <div class="summary-box" id="summaryBox"></div>
   <div class="controls">
@@ -397,6 +149,13 @@
 let summaryText = '';
 let utterance = null;
 let paused = false;
+
+// Multiple proxies — tried in order until one works
+const PROXIES = [
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+];
 
 window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('pr_gemini_key');
@@ -422,22 +181,38 @@ function saveKey() {
 
 function loadVoices() {
   const sel = document.getElementById('voiceSelect');
-  const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-  if (!voices.length) return;
+  const all = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+  if (!all.length) return;
+
+  // Preferred Google network voices first
+  const preferred = ['Google UK English Female', 'Google UK English Male', 'Google US English'];
+  const top = all.filter(v => preferred.includes(v.name));
+  const rest = all.filter(v => !preferred.includes(v.name));
+  const sorted = [...top, ...rest];
+
   const prev = sel.value;
   sel.innerHTML = '';
-  voices.forEach((v, i) => {
+  sorted.forEach((v, i) => {
     const opt = document.createElement('option');
     opt.value = i;
-    opt.textContent = v.name.replace(/Microsoft |Google |Apple /g, '').trim();
+    opt.textContent = v.name;
     sel.appendChild(opt);
   });
-  if (prev) sel.value = prev;
+  // Default to first preferred voice if available
+  if (!prev && top.length) sel.value = '0';
+  else if (prev) sel.value = prev;
+}
+
+function getVoiceByIndex(idx) {
+  const all = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+  const preferred = ['Google UK English Female', 'Google UK English Male', 'Google US English'];
+  const top = all.filter(v => preferred.includes(v.name));
+  const rest = all.filter(v => !preferred.includes(v.name));
+  return [...top, ...rest][parseInt(idx)] || null;
 }
 
 function getVoice() {
-  const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-  return voices[parseInt(document.getElementById('voiceSelect').value)] || null;
+  return getVoiceByIndex(document.getElementById('voiceSelect').value);
 }
 
 function showError(msg) {
@@ -446,9 +221,7 @@ function showError(msg) {
   el.style.display = 'block';
 }
 
-function clearError() {
-  document.getElementById('errorMsg').style.display = 'none';
-}
+function clearError() { document.getElementById('errorMsg').style.display = 'none'; }
 
 function setLoader(show, text) {
   const el = document.getElementById('loader');
@@ -462,6 +235,26 @@ function setStatus(text, active) {
   el.className = 'status-pill' + (active ? ' active' : '');
 }
 
+async function tryFetchPage(url) {
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      setLoader(true, `Fetching page (attempt ${i + 1} of ${PROXIES.length})...`);
+      const proxyUrl = PROXIES[i](url);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const html = await res.text();
+      if (!html || html.length < 100) continue;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      ['script','style','nav','footer','header','aside','noscript','iframe'].forEach(t =>
+        doc.querySelectorAll(t).forEach(el => el.remove()));
+      const text = (doc.body?.innerText || '').replace(/\s+/g, ' ').trim();
+      if (text.length > 200) return text.slice(0, 8000);
+    } catch(e) { continue; }
+  }
+  return '';
+}
+
 async function fetchAndSummarize() {
   const apiKey = localStorage.getItem('pr_gemini_key') || document.getElementById('apiKeyInput').value.trim();
   if (!apiKey) { showError('Please enter and save your Gemini API key above.'); return; }
@@ -473,7 +266,6 @@ async function fetchAndSummarize() {
   stopSummary();
   document.getElementById('outputCard').style.display = 'none';
   document.getElementById('goBtn').disabled = true;
-  setLoader(true, 'Fetching page content...');
 
   const lengthMap = {
     short: 'Summarize in exactly 3-4 sentences. Be concise, capture only the core idea.',
@@ -483,24 +275,13 @@ async function fetchAndSummarize() {
   const length = document.getElementById('lengthSelect').value;
 
   try {
-    let pageText = '';
-    try {
-      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}&timestamp=${Date.now()}`);
-      const data = await res.json();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(data.contents, 'text/html');
-      ['script','style','nav','footer','header','aside','noscript'].forEach(t =>
-        doc.querySelectorAll(t).forEach(el => el.remove()));
-      pageText = (doc.body?.innerText || '').replace(/\s+/g,' ').trim().slice(0, 8000);
-    } catch(e) {
-      pageText = '';
-    }
+    const pageText = await tryFetchPage(url);
 
     setLoader(true, 'Generating summary with Gemini...');
 
-    const prompt = pageText.length > 100
-      ? `Here is the text from a webpage (URL: ${url}):\n\n${pageText}\n\n${lengthMap[length]} Write in plain, natural spoken English — no bullet points, no markdown, no headers. Just flowing sentences a narrator would say.`
-      : `Summarize what this URL is likely about based on its structure: ${url}\n\n${lengthMap[length]} Write in plain spoken English.`;
+    const prompt = pageText.length > 200
+      ? `Here is the text content extracted from a webpage (URL: ${url}):\n\n${pageText}\n\n${lengthMap[length]} Write in plain, natural spoken English — no bullet points, no markdown, no headers. Just flowing sentences a narrator would say.`
+      : `I could not fetch the full content of this page: ${url}\n\n${lengthMap[length]} Based on the URL structure, describe what this page is likely about. Write in plain spoken English and be clear that this is based on the URL only.`;
 
     const resp = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -539,7 +320,6 @@ async function fetchAndSummarize() {
 
 function playSummary() {
   if (!summaryText) return;
-
   if (paused && utterance) {
     speechSynthesis.resume();
     paused = false;
@@ -549,35 +329,15 @@ function playSummary() {
     setStatus('PLAYING', true);
     return;
   }
-
   speechSynthesis.cancel();
   utterance = new SpeechSynthesisUtterance(summaryText);
   utterance.rate = parseFloat(document.getElementById('speedSlider').value);
   utterance.pitch = 1;
   const voice = getVoice();
   if (voice) utterance.voice = voice;
-
-  utterance.onstart = () => {
-    setStatus('PLAYING', true);
-    document.getElementById('playBtn').disabled = true;
-    document.getElementById('pauseBtn').disabled = false;
-    document.getElementById('stopBtn').disabled = false;
-  };
-
-  utterance.onend = () => {
-    setStatus('DONE');
-    paused = false;
-    document.getElementById('playBtn').disabled = false;
-    document.getElementById('pauseBtn').disabled = true;
-    document.getElementById('stopBtn').disabled = true;
-  };
-
-  utterance.onerror = (e) => {
-    if (e.error === 'interrupted') return;
-    setStatus('ERROR');
-    showError('Speech error — try a different voice.');
-  };
-
+  utterance.onstart = () => { setStatus('PLAYING', true); document.getElementById('playBtn').disabled = true; document.getElementById('pauseBtn').disabled = false; document.getElementById('stopBtn').disabled = false; };
+  utterance.onend = () => { setStatus('DONE'); paused = false; document.getElementById('playBtn').disabled = false; document.getElementById('pauseBtn').disabled = true; document.getElementById('stopBtn').disabled = true; };
+  utterance.onerror = (e) => { if (e.error === 'interrupted') return; setStatus('ERROR'); showError('Speech error — try a different voice.'); };
   speechSynthesis.speak(utterance);
 }
 
