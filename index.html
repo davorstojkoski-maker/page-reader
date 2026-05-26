@@ -100,8 +100,8 @@
     <div>
       <label class="section-label" for="lengthSelect">Summary length</label>
       <select id="lengthSelect">
-        <option value="short">Short (3–4 sentences)</option>
-        <option value="medium" selected>Medium (6–8 sentences)</option>
+        <option value="short">Short (4–5 sentences)</option>
+        <option value="medium" selected>Medium (10–12 sentences)</option>
         <option value="detailed">Detailed (full breakdown)</option>
       </select>
     </div>
@@ -268,9 +268,9 @@ async function fetchAndSummarize() {
   document.getElementById('goBtn').disabled = true;
 
   const lengthMap = {
-    short: 'Summarize in exactly 3-4 sentences. Be concise, capture only the core idea.',
-    medium: 'Summarize in 6-8 sentences covering the main topics and key takeaways.',
-    detailed: 'Write a detailed summary covering all major sections and key points in 3-5 short paragraphs.'
+    short: 'Summarize in 4-5 sentences. Be concise but complete — do not cut off mid-sentence.',
+    medium: 'Summarize in 10-12 sentences covering all main topics and key takeaways. Always finish your last sentence completely.',
+    detailed: 'Write a thorough summary covering every major section and key point in 5-7 full paragraphs. Always finish your last sentence completely.',
   };
   const length = document.getElementById('lengthSelect').value;
 
@@ -290,7 +290,7 @@ async function fetchAndSummarize() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
+          generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
         })
       }
     );
