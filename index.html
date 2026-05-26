@@ -271,14 +271,15 @@ const PROXIES = [
   url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
 ];
 
+const DEFAULT_KEY = 'AIzaSyDYpBuIzUT80x9vlSoQNVf8__xhHnx06eE';
+
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('pr_gemini_key');
-  if (saved) {
-    document.getElementById('apiKeyInput').value = saved;
-    const btn = document.getElementById('saveKeyBtn');
-    btn.textContent = '✓ Saved';
-    btn.classList.add('saved');
-  }
+  const saved = localStorage.getItem('pr_gemini_key') || DEFAULT_KEY;
+  document.getElementById('apiKeyInput').value = saved;
+  localStorage.setItem('pr_gemini_key', saved);
+  const btn = document.getElementById('saveKeyBtn');
+  btn.textContent = '✓ Saved';
+  btn.classList.add('saved');
   loadVoices();
   speechSynthesis.onvoiceschanged = loadVoices;
 });
@@ -381,7 +382,7 @@ function extractPlainText(raw) {
 }
 
 async function fetchAndSummarize() {
-  const apiKey = localStorage.getItem('pr_gemini_key') || document.getElementById('apiKeyInput').value.trim();
+  const apiKey = localStorage.getItem('pr_gemini_key') || DEFAULT_KEY;
   if (!apiKey) { showError('Please enter and save your Gemini API key above.'); return; }
   const url = document.getElementById('urlInput').value.trim();
   if (!url.startsWith('http')) { showError('Please enter a valid URL starting with https://'); return; }
@@ -403,15 +404,37 @@ async function fetchAndSummarize() {
     setLoader(true, 'Generating summary with Gemini...');
 
     const prompt = pageText.length > 200
-      ? `You are summarizing a webpage for a text-to-speech reader. Here is the page content (URL: ${url}):\n\n${pageText}\n\n
-Format the summary using markdown:
-- Use ## for section headers (short, descriptive titles)
-- Use - for bullet points under each section
+      ? `Summarize the following webpage content. You MUST use this exact markdown format — no exceptions:
+
+## Section Title
+- First bullet point as a complete sentence.
+- Second bullet point as a complete sentence.
+
+## Another Section Title
+- Bullet point here.
+- Another bullet point here.
+
+Rules:
+- ALWAYS start with ## for every section header
+- ALWAYS use - for every bullet point
 - ${lengthMap[length]}
-- Write bullet points as complete, natural sentences
-- Do not use bold (**) inside bullets
-- Do not add a preamble or closing statement`
-      : `Summarize what this URL is likely about: ${url}\n\nFormat with ## section headers and - bullet points. ${lengthMap[length]} Be clear this is based on the URL only.`;
+- Never write plain paragraphs
+- Never use bold (**) text
+- Never add intro or closing sentences outside of sections
+
+Page URL: ${url}
+Page content:
+${pageText}`
+      : `Summarize what this URL is likely about using this EXACT markdown format:
+
+## Section Title
+- Bullet point as a complete sentence.
+
+## Another Section
+- Bullet point here.
+
+URL: ${url}
+Rules: ALWAYS use ## headers and - bullets. Never write plain paragraphs. ${lengthMap[length]}`;
 
     const resp = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
