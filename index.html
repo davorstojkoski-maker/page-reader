@@ -503,7 +503,7 @@ async function fetchAndSummarize() {
       : `Summarize what this URL is likely about based on its structure: ${url}\n\n${lengthMap[length]} Write in plain spoken English.`;
 
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
