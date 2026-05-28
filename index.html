@@ -373,18 +373,31 @@ async function fetchAndSummarize() {
   }
 }
 
-async function callSummarizeAPI(prompt) {
-  const resp = await fetch('/api/summarize', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt })
-  });
-  if (!resp.ok) {
-    const err = await resp.json();
-    throw new Error(err.error || `API error ${resp.status}`);
+async function callSummarizeAPI(prompt, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const resp = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      if (resp.status === 429 || resp.status === 503) {
+        const waitSecs = (attempt + 1) * 10;
+        setLoader(true, `Rate limit hit — waiting ${waitSecs}s before retry...`);
+        await new Promise(r => setTimeout(r, waitSecs * 1000));
+        continue;
+      }
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || `API error ${resp.status}`);
+      }
+      const result = await resp.json();
+      return result.text || '';
+    } catch(err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 5000));
+    }
   }
-  const result = await resp.json();
-  return result.text || '';
 }
 
 async function generateSummary(text, isLargeDoc = false, url = '') {
@@ -417,6 +430,7 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
     const chunkSummaries = [];
     for (let i = 0; i < chunks.length; i++) {
       setLoader(true, `Summarizing part ${i + 1} of ${chunks.length}...`);
+      if (i > 0) await new Promise(r => setTimeout(r, 3000)); // 3s delay between chunks
       const chunkPrompt = `Summarize this portion of a book (part ${i+1} of ${chunks.length}). Use this EXACT markdown format:
 
 ## Chapter/Section Title
