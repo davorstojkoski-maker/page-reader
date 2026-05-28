@@ -583,10 +583,7 @@ ${chunks[i]}`;
             </div>
           </div>
           <div class="summary-content">${renderStructuredSummary(chunkResult)}</div>`;
-        // Only add if not already added (protect against double-run)
-        if (!document.getElementById(`chunk-card-${i}`)) {
-          chunksContainer.appendChild(card);
-        }
+        chunksContainer.appendChild(card);
         // Only scroll to top of chunks container on first chunk
         if (chunkSummaries.length === 1) {
           chunksContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
