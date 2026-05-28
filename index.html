@@ -4,180 +4,118 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Page Reader</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #0c0c0e;
-    --surface: #141416;
-    --surface2: #1e1e22;
-    --surface3: #28282e;
-    --border: #2a2a32;
-    --border2: #38383f;
-    --accent: #c8f05a;
-    --accent-dim: #8aab2e;
-    --accent-glow: rgba(200,240,90,0.08);
-    --text: #eeeef0;
-    --muted: #72727a;
-    --muted2: #52525a;
-    --danger: #ff6b6b;
-    --success: #5fcc8a;
-    --mono: 'DM Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
+    --bg: #0c0c0e; --surface: #141416; --surface2: #1e1e22; --surface3: #28282e;
+    --border: #2a2a32; --border2: #38383f; --accent: #c8f05a; --accent-dim: #8aab2e;
+    --accent-glow: rgba(200,240,90,0.08); --text: #eeeef0; --muted: #72727a;
+    --muted2: #52525a; --danger: #ff6b6b; --success: #5fcc8a;
+    --mono: 'DM Mono', monospace; --sans: 'DM Sans', sans-serif;
   }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 3rem 1.5rem 5rem;
-  }
-
-  /* Header */
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 3rem 1.5rem 5rem; }
   header { text-align: center; margin-bottom: 3rem; }
-  .logo {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--accent); margin-bottom: 1.25rem;
-  }
+  .logo { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 1.25rem; }
   .logo-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 2s ease-in-out infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 300; letter-spacing: -0.04em; line-height: 1.05; color: var(--text); }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 300; letter-spacing: -0.04em; line-height: 1.05; }
   h1 span { color: var(--accent); }
   .tagline { margin-top: 1rem; font-size: 15px; color: var(--muted); font-weight: 300; line-height: 1.6; }
 
-  /* Cards */
-  .card {
-    width: 100%; max-width: 700px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 20px;
-    padding: 1.75rem 2rem;
-    margin-bottom: 1rem;
-  }
-  .card-title {
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
-    text-transform: uppercase; color: var(--muted2); margin-bottom: 1rem;
-    display: flex; align-items: center; gap: 8px;
-  }
+  .card { width: 100%; max-width: 700px; background: var(--surface); border: 0.5px solid var(--border); border-radius: 20px; padding: 1.75rem 2rem; margin-bottom: 1rem; }
+  .card-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted2); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
   .card-title::after { content:''; flex:1; height:0.5px; background: var(--border); }
 
-  /* Inputs */
-  input[type=text], input[type=password] {
-    width: 100%; background: var(--surface2); border: 0.5px solid var(--border2);
-    border-radius: 10px; padding: 11px 15px; font-size: 14px; color: var(--text);
-    font-family: var(--sans); outline: none; transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  input[type=text]:focus, input[type=password]:focus {
-    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
-  }
-  input::placeholder { color: var(--muted2); }
+  /* Mode tabs */
+  .tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; }
+  .tab { flex: 1; padding: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; border: 0.5px solid var(--border2); border-radius: 10px; background: var(--surface2); color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .tab:hover { border-color: var(--accent); color: var(--accent); }
+  .tab.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
 
+  input[type=text] { width: 100%; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 11px 15px; font-size: 14px; color: var(--text); font-family: var(--sans); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  input[type=text]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  input::placeholder { color: var(--muted2); }
   .row { display: flex; gap: 8px; }
   .row input { flex: 1; }
 
-  /* Buttons */
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-    border-radius: 10px; font-family: var(--mono); font-size: 12px; cursor: pointer;
-    transition: all 0.15s; border: 0.5px solid var(--border2); white-space: nowrap;
-    padding: 11px 20px; background: var(--surface2); color: var(--muted);
+  /* File drop zone */
+  .dropzone {
+    border: 1.5px dashed var(--border2); border-radius: 12px; padding: 2rem;
+    text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface2);
   }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-glow); }
+  .dropzone-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .dropzone-label { font-size: 14px; color: var(--muted); }
+  .dropzone-label span { color: var(--accent); }
+  .dropzone-hint { font-size: 11px; color: var(--muted2); margin-top: 4px; font-family: var(--mono); }
+  .file-selected { display: none; align-items: center; gap: 10px; padding: 10px 14px; background: var(--accent-glow); border: 0.5px solid var(--accent); border-radius: 10px; margin-top: 10px; }
+  .file-selected.show { display: flex; }
+  .file-name { font-size: 13px; color: var(--accent); flex: 1; font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-clear { font-size: 11px; color: var(--muted); cursor: pointer; }
+  .file-clear:hover { color: var(--danger); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 10px; font-family: var(--mono); font-size: 12px; cursor: pointer; transition: all 0.15s; border: 0.5px solid var(--border2); white-space: nowrap; padding: 11px 20px; background: var(--surface2); color: var(--muted); }
   .btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
   .btn:active { transform: scale(0.98); }
   .btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
   .btn.primary { background: var(--accent); color: #0c0c0e; border-color: var(--accent); font-weight: 500; }
   .btn.primary:hover { background: #d6f56e; box-shadow: 0 0 20px var(--accent-glow); }
-  .btn.saved { color: var(--success); border-color: var(--success); }
   .btn svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; }
 
-  /* Grid */
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.25rem; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1.25rem; }
   label.sublabel { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted2); display: block; margin-bottom: 6px; }
-
-  select {
-    width: 100%; background: var(--surface2); border: 0.5px solid var(--border2);
-    border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--text);
-    font-family: var(--sans); outline: none; cursor: pointer; appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2372727a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 12px center; background-color: var(--surface2);
-    transition: border-color 0.2s;
-  }
+  select { width: 100%; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--text); font-family: var(--sans); outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2372727a' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-color: var(--surface2); transition: border-color 0.2s; }
   select:focus { border-color: var(--accent); }
 
-  /* Speed */
   .speed-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .speed-val { font-family: var(--mono); font-size: 12px; color: var(--accent); }
   input[type=range] { width: 100%; height: 3px; appearance: none; background: var(--border2); border-radius: 2px; outline: none; cursor: pointer; }
-  input[type=range]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; transition: transform 0.1s; box-shadow: 0 0 8px var(--accent-glow); }
+  input[type=range]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; transition: transform 0.1s; }
   input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); }
 
-  /* Hint */
-  .hint { font-size: 12px; color: var(--muted2); margin-top: 8px; line-height: 1.6; }
-  .hint a { color: var(--accent-dim); text-decoration: none; }
-  .hint a:hover { text-decoration: underline; }
-
-  /* Loader */
   .loader { display: none; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 1rem; }
   .loader.show { display: flex; }
   .dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }
   .dot:nth-child(2) { animation-delay: 0.2s; }
   .dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes pulse { 0%,80%,100%{opacity:0.15;transform:scale(0.7)} 40%{opacity:1;transform:scale(1)} }
-
-  /* Error */
   .error { font-size: 12px; color: var(--danger); margin-top: 0.75rem; display: none; font-family: var(--mono); line-height: 1.5; }
 
-  /* Output card */
+  /* Output */
   .output-card { width: 100%; max-width: 700px; display: none; }
-
-  .summary-card {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 20px;
-    padding: 2rem;
-    margin-bottom: 1rem;
-  }
-
-  /* Rendered summary styles */
-  .summary-content h2 {
-    font-size: 13px; font-weight: 500; color: var(--accent);
-    font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
-    margin: 1.5rem 0 0.6rem; padding-bottom: 0.4rem;
-    border-bottom: 0.5px solid var(--border);
-  }
+  .summary-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 20px; padding: 2rem; margin-bottom: 1rem; }
+  .summary-content h2 { font-size: 13px; font-weight: 500; color: var(--accent); font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; margin: 1.5rem 0 0.6rem; padding-bottom: 0.4rem; border-bottom: 0.5px solid var(--border); }
   .summary-content h2:first-child { margin-top: 0; }
   .summary-content ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  .summary-content li {
-    display: flex; gap: 10px; font-size: 15px; line-height: 1.65; color: var(--text);
-    padding: 8px 12px; background: var(--surface2); border-radius: 8px;
-    border-left: 2px solid var(--accent-dim);
-  }
+  .summary-content li { display: flex; gap: 10px; font-size: 15px; line-height: 1.65; color: var(--text); padding: 8px 12px; background: var(--surface2); border-radius: 8px; border-left: 2px solid var(--accent-dim); }
   .summary-content li::before { content: '→'; color: var(--accent); font-family: var(--mono); font-size: 12px; margin-top: 2px; flex-shrink: 0; }
   .summary-content p { font-size: 15px; line-height: 1.7; color: var(--text); margin-bottom: 0.5rem; }
 
   /* Playback */
-  .playback {
-    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-    background: var(--surface); border: 0.5px solid var(--border);
-    border-radius: 16px; padding: 1rem 1.25rem;
-  }
-  .status-pill {
-    margin-left: auto; font-family: var(--mono); font-size: 10px;
-    letter-spacing: 0.12em; color: var(--muted2);
-    padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--border);
-  }
+  .playback { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 0.5px solid var(--border); border-radius: 16px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .status-pill { margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--muted2); padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--border); }
   .status-pill.active { color: var(--accent); border-color: var(--accent); background: var(--accent-glow); }
+
+  /* Q&A */
+  .qa-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 20px; padding: 1.75rem 2rem; }
+  .qa-messages { display: flex; flex-direction: column; gap: 12px; margin-bottom: 1rem; max-height: 400px; overflow-y: auto; }
+  .qa-msg { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
+  .qa-msg.user { background: var(--accent-glow); border: 0.5px solid var(--accent); color: var(--text); align-self: flex-end; max-width: 85%; border-radius: 12px 12px 4px 12px; }
+  .qa-msg.ai { background: var(--surface2); border: 0.5px solid var(--border2); color: var(--text); align-self: flex-start; max-width: 85%; border-radius: 12px 12px 12px 4px; }
+  .qa-msg.ai .speak-btn { font-family: var(--mono); font-size: 10px; color: var(--accent); cursor: pointer; margin-top: 6px; display: inline-block; }
+  .qa-msg.ai .speak-btn:hover { text-decoration: underline; }
+  .qa-input-row { display: flex; gap: 8px; }
+  .qa-input-row input { flex: 1; }
 
   footer { margin-top: 3rem; font-family: var(--mono); font-size: 10px; color: var(--muted2); text-align: center; letter-spacing: 0.1em; }
 
   @media (max-width: 540px) {
-    .grid2 { grid-template-columns: 1fr; }
-    .row { flex-direction: column; }
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+    .row, .qa-input-row { flex-direction: column; }
     body { padding: 2rem 1rem 4rem; }
   }
 </style>
@@ -186,25 +124,60 @@
 
 <header>
   <div class="logo"><div class="logo-dot"></div> Page Reader</div>
-  <h1>Listen to any <span>webpage</span></h1>
-  <p class="tagline">Paste a URL — get a structured summary read aloud,<br>at your speed.</p>
+  <h1>Listen to any <span>content</span></h1>
+  <p class="tagline">URL or file — get a structured summary read aloud,<br>then ask questions about it.</p>
 </header>
 
-<!-- Controls -->
 <div class="card">
-  <div class="card-title">Page URL</div>
-  <div class="row">
-    <input type="text" id="urlInput" placeholder="https://..." />
-    <button class="btn primary" id="goBtn" onclick="fetchAndSummarize()">→ Go</button>
+  <div class="tabs">
+    <div class="tab active" id="tabUrl" onclick="switchTab('url')">🌐 &nbsp;Web URL</div>
+    <div class="tab" id="tabFile" onclick="switchTab('file')">📄 &nbsp;File Upload</div>
   </div>
 
-  <div class="grid2" style="margin-top:1.25rem">
+  <!-- URL mode -->
+  <div id="modeUrl">
+    <div class="row">
+      <input type="text" id="urlInput" placeholder="https://..." />
+      <button class="btn primary" id="goBtn" onclick="fetchAndSummarize()">→ Go</button>
+    </div>
+  </div>
+
+  <!-- File mode -->
+  <div id="modeFile" style="display:none">
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="dropzone-icon">📂</div>
+      <div class="dropzone-label">Drop your file here or <span>browse</span></div>
+      <div class="dropzone-hint">PDF or Word (.docx) — up to ~500 pages</div>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.docx" style="display:none" onchange="onFileSelected(event)" />
+    <div class="file-selected" id="fileSelected">
+      <span class="file-name" id="fileName"></span>
+      <span class="file-clear" onclick="clearFile()">✕ Clear</span>
+    </div>
+    <button class="btn primary" id="fileGoBtn" onclick="processFile()" style="margin-top:12px;width:100%" disabled>→ Summarize File</button>
+  </div>
+
+  <div class="grid3" style="margin-top:1.25rem">
     <div>
       <label class="sublabel" for="lengthSelect">Summary length</label>
       <select id="lengthSelect">
         <option value="short">Short</option>
         <option value="medium" selected>Medium</option>
         <option value="detailed">Detailed</option>
+      </select>
+    </div>
+    <div>
+      <label class="sublabel" for="langSelect">Summarize in</label>
+      <select id="langSelect">
+        <option value="auto">Auto-detect</option>
+        <option value="English">English</option>
+        <option value="Macedonian">Macedonian</option>
+        <option value="French">French</option>
+        <option value="German">German</option>
+        <option value="Spanish">Spanish</option>
+        <option value="Italian">Italian</option>
+        <option value="Croatian">Croatian</option>
+        <option value="Serbian">Serbian</option>
       </select>
     </div>
     <div>
@@ -234,6 +207,7 @@
   <div class="summary-card">
     <div class="summary-content" id="summaryContent"></div>
   </div>
+
   <div class="playback">
     <button class="btn primary" id="playBtn" onclick="playSummary()">
       <svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z"/></svg> Play
@@ -246,14 +220,29 @@
     </button>
     <span class="status-pill" id="statusPill">READY</span>
   </div>
+
+  <!-- Q&A -->
+  <div class="qa-card">
+    <div class="card-title">Ask questions about this content</div>
+    <div class="qa-messages" id="qaMessages"></div>
+    <div class="qa-input-row">
+      <input type="text" id="qaInput" placeholder="Ask anything about this content..." onkeydown="if(event.key==='Enter') askQuestion()" />
+      <button class="btn primary" id="askBtn" onclick="askQuestion()">Ask</button>
+    </div>
+  </div>
 </div>
 
-<footer>Powered by Gemini API (free tier) &mdash; your key never leaves your browser</footer>
+<footer>Powered by Gemini API &mdash; secure proxy, key never in browser</footer>
 
 <script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
 let summaryText = '';
+let documentContext = '';
 let utterance = null;
 let paused = false;
+let currentMode = 'url';
+let selectedFile = null;
 
 const PROXIES = [
   url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
@@ -261,23 +250,268 @@ const PROXIES = [
   url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
 ];
 
-const PROXY_URL = '/api/summarize';
-
 window.addEventListener('DOMContentLoaded', () => {
   loadVoices();
   speechSynthesis.onvoiceschanged = loadVoices;
 });
 
-function saveKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key) return;
-  localStorage.setItem('pr_gemini_key', key);
-  const btn = document.getElementById('saveKeyBtn');
-  btn.textContent = '✓ Saved';
-  btn.classList.add('saved');
-  setTimeout(() => { btn.textContent = 'Save'; btn.classList.remove('saved'); }, 2000);
+function switchTab(mode) {
+  currentMode = mode;
+  document.getElementById('modeUrl').style.display = mode === 'url' ? 'block' : 'none';
+  document.getElementById('modeFile').style.display = mode === 'file' ? 'block' : 'none';
+  document.getElementById('tabUrl').classList.toggle('active', mode === 'url');
+  document.getElementById('tabFile').classList.toggle('active', mode === 'file');
 }
 
+// File handling
+function onDragOver(e) { e.preventDefault(); document.getElementById('dropzone').classList.add('drag'); }
+function onDragLeave() { document.getElementById('dropzone').classList.remove('drag'); }
+function onDrop(e) { e.preventDefault(); document.getElementById('dropzone').classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }
+function onFileSelected(e) { const f = e.target.files[0]; if (f) handleFile(f); }
+
+function handleFile(file) {
+  if (!file.name.match(/\.(pdf|docx)$/i)) { showError('Only PDF and .docx files are supported.'); return; }
+  selectedFile = file;
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSelected').classList.add('show');
+  document.getElementById('fileGoBtn').disabled = false;
+  clearError();
+}
+
+function clearFile() {
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileSelected').classList.remove('show');
+  document.getElementById('fileGoBtn').disabled = true;
+}
+
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(item => item.str).join(' ') + '\n';
+    setLoader(true, `Extracting text... page ${i} of ${pdf.numPages}`);
+  }
+  return text;
+}
+
+async function extractTextFromDocx(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+async function processFile() {
+  if (!selectedFile) return;
+  clearError();
+  stopSummary();
+  document.getElementById('outputCard').style.display = 'none';
+  document.getElementById('fileGoBtn').disabled = true;
+  setLoader(true, 'Reading file...');
+
+  try {
+    let text = '';
+    if (selectedFile.name.endsWith('.pdf')) {
+      text = await extractTextFromPDF(selectedFile);
+    } else {
+      text = await extractTextFromDocx(selectedFile);
+    }
+
+    text = text.replace(/\s+/g, ' ').trim();
+    documentContext = text;
+
+    const isLarge = text.length > 20000;
+    await generateSummary(text, isLarge);
+    document.getElementById('fileGoBtn').disabled = false;
+  } catch(err) {
+    setLoader(false);
+    document.getElementById('fileGoBtn').disabled = false;
+    showError('Error reading file: ' + err.message);
+  }
+}
+
+// Page fetching
+async function tryFetchPage(url) {
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      setLoader(true, `Fetching page (attempt ${i + 1} of ${PROXIES.length})...`);
+      const res = await fetch(PROXIES[i](url), { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const html = await res.text();
+      if (!html || html.length < 100) continue;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      ['script','style','nav','footer','header','aside','noscript','iframe'].forEach(t =>
+        doc.querySelectorAll(t).forEach(el => el.remove()));
+      const text = (doc.body?.innerText || '').replace(/\s+/g, ' ').trim();
+      if (text.length > 200) return text.slice(0, 8000);
+    } catch(e) { continue; }
+  }
+  return '';
+}
+
+async function fetchAndSummarize() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url.startsWith('http')) { showError('Please enter a valid URL starting with https://'); return; }
+  clearError();
+  stopSummary();
+  document.getElementById('outputCard').style.display = 'none';
+  document.getElementById('goBtn').disabled = true;
+
+  try {
+    const pageText = await tryFetchPage(url);
+    documentContext = pageText;
+    await generateSummary(pageText, false, url);
+    document.getElementById('goBtn').disabled = false;
+  } catch(err) {
+    setLoader(false);
+    document.getElementById('goBtn').disabled = false;
+    showError('Error: ' + err.message);
+  }
+}
+
+async function generateSummary(text, isLargeDoc = false, url = '') {
+  const length = document.getElementById('lengthSelect').value;
+  const lang = document.getElementById('langSelect').value;
+  const langInstruction = lang === 'auto'
+    ? 'Detect the language of the content and write the summary in that same language.'
+    : `Write the summary in ${lang}, regardless of the source language.`;
+
+  const lengthMap = {
+    short: isLargeDoc ? 'Create one section per chapter/major section with 2-3 bullet points each.' : 'Create 2-3 sections with 2-3 bullet points each.',
+    medium: isLargeDoc ? 'Create one section per chapter/major section with 3-4 bullet points each.' : 'Create 3-5 sections with 3-5 bullet points each.',
+    detailed: isLargeDoc ? 'Create one section per chapter/major section with 4-6 bullet points each, capturing all key ideas.' : 'Create 5-7 sections with 4-6 bullet points each.',
+  };
+
+  const chapterNote = isLargeDoc ? '\nThis is a large document. Identify chapters or major sections and create one ## header per chapter/section.' : '';
+
+  const prompt = text.length > 200
+    ? `Summarize the following content. You MUST use this exact markdown format:
+
+## Section or Chapter Title
+- Complete sentence bullet point.
+- Another complete sentence.
+
+Rules:
+- ALWAYS use ## for every section/chapter header
+- ALWAYS use - for every bullet point  
+- ${lengthMap[length]}
+- ${langInstruction}
+- Never write plain paragraphs outside of bullets
+- Never use bold (**) text${chapterNote}
+
+${url ? `Source URL: ${url}\n` : ''}Content:
+${text.slice(0, 50000)}`
+    : `Summarize what this URL is likely about: ${url}
+
+Format with ## headers and - bullets. ${lengthMap[length]} ${langInstruction}`;
+
+  setLoader(true, isLargeDoc ? 'Analyzing document chapters...' : 'Generating summary...');
+
+  const resp = await fetch('/api/summarize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json();
+    throw new Error(err.error || `API error ${resp.status}`);
+  }
+
+  const result = await resp.json();
+  const raw = result.text || 'Could not generate summary.';
+
+  summaryText = extractPlainText(raw);
+  document.getElementById('summaryContent').innerHTML = renderStructuredSummary(raw);
+  document.getElementById('qaMessages').innerHTML = '';
+  document.getElementById('outputCard').style.display = 'block';
+  document.getElementById('playBtn').disabled = false;
+  setStatus('READY');
+  setLoader(false);
+  document.getElementById('outputCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Q&A
+async function askQuestion() {
+  const input = document.getElementById('qaInput');
+  const question = input.value.trim();
+  if (!question || !documentContext) return;
+
+  input.value = '';
+  document.getElementById('askBtn').disabled = true;
+
+  const msgs = document.getElementById('qaMessages');
+  msgs.innerHTML += `<div class="qa-msg user">${question}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const thinkingEl = document.createElement('div');
+  thinkingEl.className = 'qa-msg ai';
+  thinkingEl.textContent = '...';
+  msgs.appendChild(thinkingEl);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  try {
+    const resp = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, context: documentContext })
+    });
+
+    const result = await resp.json();
+    const answer = result.text || 'Could not answer that question.';
+
+    thinkingEl.innerHTML = `${answer}<br><span class="speak-btn" onclick="speakText('${answer.replace(/'/g, "\\'")}')">🔊 Read aloud</span>`;
+    msgs.scrollTop = msgs.scrollHeight;
+  } catch(err) {
+    thinkingEl.textContent = 'Error: ' + err.message;
+  }
+
+  document.getElementById('askBtn').disabled = false;
+}
+
+function speakText(text) {
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = parseFloat(document.getElementById('speedSlider').value);
+  const voice = getVoice();
+  if (voice) u.voice = voice;
+  speechSynthesis.speak(u);
+}
+
+// Rendering
+function renderStructuredSummary(raw) {
+  const lines = raw.split('\n').filter(l => l.trim());
+  let html = '';
+  let inList = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h2>${trimmed.replace(/^#+\s*/, '')}</h2>`;
+    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += `<li>${trimmed.replace(/^[-*•]\s*/, '')}</li>`;
+    } else if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h2>${trimmed.replace(/\*\*/g, '')}</h2>`;
+    } else if (trimmed) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<p>${trimmed}</p>`;
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+function extractPlainText(raw) {
+  return raw.replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/^[-*•]\s*/gm, '').replace(/\n+/g, ' ').trim();
+}
+
+// Voices
 function loadVoices() {
   const sel = document.getElementById('voiceSelect');
   const all = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
@@ -311,143 +545,6 @@ function clearError() { document.getElementById('errorMsg').style.display = 'non
 function setLoader(show, text) { const el = document.getElementById('loader'); el.classList.toggle('show', show); if (text) document.getElementById('loaderText').textContent = text; }
 function setStatus(text, active) { const el = document.getElementById('statusPill'); el.textContent = text; el.className = 'status-pill' + (active ? ' active' : ''); }
 
-async function tryFetchPage(url) {
-  for (let i = 0; i < PROXIES.length; i++) {
-    try {
-      setLoader(true, `Fetching page (attempt ${i + 1} of ${PROXIES.length})...`);
-      const res = await fetch(PROXIES[i](url), { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) continue;
-      const html = await res.text();
-      if (!html || html.length < 100) continue;
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      ['script','style','nav','footer','header','aside','noscript','iframe'].forEach(t =>
-        doc.querySelectorAll(t).forEach(el => el.remove()));
-      const text = (doc.body?.innerText || '').replace(/\s+/g, ' ').trim();
-      if (text.length > 200) return text.slice(0, 8000);
-    } catch(e) { continue; }
-  }
-  return '';
-}
-
-function renderStructuredSummary(raw) {
-  // Parse markdown-style headers and bullets into HTML
-  const lines = raw.split('\n').filter(l => l.trim());
-  let html = '';
-  let inList = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
-      if (inList) { html += '</ul>'; inList = false; }
-      html += `<h2>${trimmed.replace(/^#+\s*/, '')}</h2>`;
-    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
-      if (!inList) { html += '<ul>'; inList = true; }
-      html += `<li>${trimmed.replace(/^[-*•]\s*/, '')}</li>`;
-    } else if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
-      if (inList) { html += '</ul>'; inList = false; }
-      html += `<h2>${trimmed.replace(/\*\*/g, '')}</h2>`;
-    } else if (trimmed) {
-      if (inList) { html += '</ul>'; inList = false; }
-      html += `<p>${trimmed}</p>`;
-    }
-  }
-  if (inList) html += '</ul>';
-  return html;
-}
-
-function extractPlainText(raw) {
-  // Strip markdown for TTS
-  return raw
-    .replace(/^#+\s*/gm, '')
-    .replace(/\*\*/g, '')
-    .replace(/^[-*•]\s*/gm, '')
-    .replace(/\n+/g, ' ')
-    .trim();
-}
-
-async function fetchAndSummarize() {
-  const url = document.getElementById('urlInput').value.trim();
-  if (!url.startsWith('http')) { showError('Please enter a valid URL starting with https://'); return; }
-
-  clearError();
-  stopSummary();
-  document.getElementById('outputCard').style.display = 'none';
-  document.getElementById('goBtn').disabled = true;
-
-  const lengthMap = {
-    short: 'Create 2-3 sections, each with 2-3 bullet points. Keep it brief.',
-    medium: 'Create 3-5 sections, each with 3-5 bullet points covering all main topics.',
-    detailed: 'Create 5-7 sections, each with 4-6 bullet points covering every major point in depth.',
-  };
-  const length = document.getElementById('lengthSelect').value;
-
-  try {
-    const pageText = await tryFetchPage(url);
-    setLoader(true, 'Generating summary with Gemini...');
-
-    const prompt = pageText.length > 200
-      ? `Summarize the following webpage content. You MUST use this exact markdown format — no exceptions:
-
-## Section Title
-- First bullet point as a complete sentence.
-- Second bullet point as a complete sentence.
-
-## Another Section Title
-- Bullet point here.
-- Another bullet point here.
-
-Rules:
-- ALWAYS start with ## for every section header
-- ALWAYS use - for every bullet point
-- ${lengthMap[length]}
-- Never write plain paragraphs
-- Never use bold (**) text
-- Never add intro or closing sentences outside of sections
-
-Page URL: ${url}
-Page content:
-${pageText}`
-      : `Summarize what this URL is likely about using this EXACT markdown format:
-
-## Section Title
-- Bullet point as a complete sentence.
-
-## Another Section
-- Bullet point here.
-
-URL: ${url}
-Rules: ALWAYS use ## headers and - bullets. Never write plain paragraphs. ${lengthMap[length]}`;
-
-    const resp = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error || `API error ${resp.status}`);
-    }
-
-    const result = await resp.json();
-    const raw = result.text || 'Could not generate summary.';
-
-    summaryText = extractPlainText(raw);
-    document.getElementById('summaryContent').innerHTML = renderStructuredSummary(raw);
-    document.getElementById('outputCard').style.display = 'block';
-    document.getElementById('playBtn').disabled = false;
-    setStatus('READY');
-    setLoader(false);
-    document.getElementById('goBtn').disabled = false;
-    document.getElementById('outputCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-  } catch(err) {
-    setLoader(false);
-    document.getElementById('goBtn').disabled = false;
-    showError('Error: ' + err.message);
-  }
-}
-
 function playSummary() {
   if (!summaryText) return;
   if (paused && utterance) {
@@ -460,7 +557,6 @@ function playSummary() {
   speechSynthesis.cancel();
   utterance = new SpeechSynthesisUtterance(summaryText);
   utterance.rate = parseFloat(document.getElementById('speedSlider').value);
-  utterance.pitch = 1;
   const voice = getVoice();
   if (voice) utterance.voice = voice;
   utterance.onstart = () => { setStatus('PLAYING', true); document.getElementById('playBtn').disabled = true; document.getElementById('pauseBtn').disabled = false; document.getElementById('stopBtn').disabled = false; };
