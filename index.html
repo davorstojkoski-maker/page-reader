@@ -37,6 +37,7 @@
 
   input[type=text] { width: 100%; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 11px 15px; font-size: 14px; color: var(--text); font-family: var(--sans); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
   input[type=text]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
   input::placeholder { color: var(--muted2); }
   .row { display: flex; gap: 8px; }
   .row input { flex: 1; }
@@ -146,6 +147,7 @@
   <div class="tabs">
     <div class="tab active" id="tabUrl" onclick="switchTab('url')">🌐 &nbsp;Web URL</div>
     <div class="tab" id="tabFile" onclick="switchTab('file')">📄 &nbsp;File Upload</div>
+    <div class="tab" id="tabText" onclick="switchTab('text')">✏️ &nbsp;Paste Text</div>
   </div>
 
   <!-- URL mode -->
@@ -154,6 +156,12 @@
       <input type="text" id="urlInput" placeholder="https://..." />
       <button class="btn primary" id="goBtn" onclick="fetchAndSummarize()">→ Go</button>
     </div>
+  </div>
+
+  <!-- Text mode -->
+  <div id="modeText" style="display:none">
+    <textarea id="textInput" placeholder="Paste any text here — a chapter, article, notes..." style="width:100%;height:180px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:10px;padding:12px 15px;font-size:14px;color:var(--text);font-family:var(--sans);outline:none;resize:vertical;line-height:1.6;transition:border-color 0.2s;"></textarea>
+    <button class="btn primary" id="textGoBtn" onclick="processText()" style="margin-top:10px;width:100%">→ Summarize Text</button>
   </div>
 
   <!-- File mode -->
@@ -288,8 +296,10 @@ function switchTab(mode) {
   currentMode = mode;
   document.getElementById('modeUrl').style.display = mode === 'url' ? 'block' : 'none';
   document.getElementById('modeFile').style.display = mode === 'file' ? 'block' : 'none';
+  document.getElementById('modeText').style.display = mode === 'text' ? 'block' : 'none';
   document.getElementById('tabUrl').classList.toggle('active', mode === 'url');
   document.getElementById('tabFile').classList.toggle('active', mode === 'file');
+  document.getElementById('tabText').classList.toggle('active', mode === 'text');
 }
 
 // File handling
@@ -366,6 +376,30 @@ async function processFile() {
   }
 }
 
+// Process pasted text
+async function processText() {
+  const text = document.getElementById('textInput').value.trim();
+  if (!text) { showError('Please paste some text first.'); return; }
+  clearError();
+  stopSummary();
+  document.getElementById('outputCard').style.display = 'none';
+  document.getElementById('chunksContainer').style.display = 'none';
+  document.getElementById('chunksContainer').innerHTML = '';
+  document.getElementById('downloadBar').style.display = 'none';
+  document.getElementById('textGoBtn').disabled = true;
+  currentFileName = 'pasted-text';
+  documentContext = text;
+  try {
+    const isLarge = text.length > 80000;
+    await generateSummary(text, isLarge);
+    document.getElementById('textGoBtn').disabled = false;
+  } catch(err) {
+    setLoader(false);
+    document.getElementById('textGoBtn').disabled = false;
+    showError('Error: ' + err.message);
+  }
+}
+
 // Page fetching
 async function tryFetchPage(url) {
   for (let i = 0; i < PROXIES.length; i++) {
@@ -418,7 +452,7 @@ async function callSummarizeAPI(prompt, retries = 3) {
         body: JSON.stringify({ prompt })
       });
       if (resp.status === 429 || resp.status === 503) {
-        const waitSecs = (attempt + 1) * 10;
+        const waitSecs = (attempt + 1) * 20;
         setLoader(true, `Rate limit hit — waiting ${waitSecs}s before retry...`);
         await new Promise(r => setTimeout(r, waitSecs * 1000));
         continue;
@@ -470,7 +504,7 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
 
     for (let i = 0; i < chunks.length; i++) {
       setLoader(true, `Summarizing part ${i + 1} of ${chunks.length}...`);
-      if (i > 0) await new Promise(r => setTimeout(r, 3000));
+      if (i > 0) await new Promise(r => setTimeout(r, 8000));
 
       const chunkPrompt = `Summarize this portion of a book (part ${i+1} of ${chunks.length}). Use this EXACT markdown format:
 
@@ -513,18 +547,8 @@ ${chunks[i]}`;
       }
     }
 
-    if (chunkSummaries.length > 1) {
-      setLoader(true, 'Combining all chapters...');
-      const mergePrompt = `Below are summaries of consecutive parts of a book. Combine them into one clean summary keeping all chapters. Remove any duplicate chapters. Keep the exact same markdown format:
-
-## Chapter Title
-- Bullet point.
-
-${chunkSummaries.join('\n\n')}`;
-      raw = await callSummarizeAPI(mergePrompt);
-    } else {
-      raw = chunkSummaries[0];
-    }
+    // Combine chunks locally — no extra API call needed
+    raw = chunkSummaries.join('\n\n');
 
   } else {
     const prompt = text.length > 200
