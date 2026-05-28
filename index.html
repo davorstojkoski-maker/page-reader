@@ -176,6 +176,15 @@
       <span class="file-name" id="fileName"></span>
       <span class="file-clear" onclick="clearFile()">✕ Clear</span>
     </div>
+    <div id="pageRangeRow" style="display:none;margin-top:12px;">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;">Page range (optional — leave blank for full document)</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" id="pageFrom" placeholder="From page" min="1" style="flex:1;padding:9px 12px;font-size:13px;" />
+        <span style="color:var(--muted);font-family:var(--mono);font-size:12px;">to</span>
+        <input type="number" id="pageTo" placeholder="To page" min="1" style="flex:1;padding:9px 12px;font-size:13px;" />
+        <span id="pageTotalLabel" style="color:var(--muted2);font-family:var(--mono);font-size:11px;white-space:nowrap;"></span>
+      </div>
+    </div>
     <button class="btn primary" id="fileGoBtn" onclick="processFile()" style="margin-top:12px;width:100%" disabled>→ Summarize File</button>
   </div>
 
@@ -315,6 +324,19 @@ function handleFile(file) {
   document.getElementById('fileName').textContent = file.name;
   document.getElementById('fileSelected').classList.add('show');
   document.getElementById('fileGoBtn').disabled = false;
+  document.getElementById('pageRangeRow').style.display = 'block';
+  document.getElementById('pageFrom').value = '';
+  document.getElementById('pageTo').value = '';
+  document.getElementById('pageTotalLabel').textContent = '';
+  // Get total pages for PDFs
+  if (file.name.endsWith('.pdf')) {
+    file.arrayBuffer().then(buf => {
+      pdfjsLib.getDocument({ data: buf }).promise.then(pdf => {
+        document.getElementById('pageTotalLabel').textContent = `(${pdf.numPages} pages total)`;
+        document.getElementById('pageTo').placeholder = `To page (max ${pdf.numPages})`;
+      });
+    });
+  }
   clearError();
 }
 
@@ -323,17 +345,21 @@ function clearFile() {
   document.getElementById('fileInput').value = '';
   document.getElementById('fileSelected').classList.remove('show');
   document.getElementById('fileGoBtn').disabled = true;
+  document.getElementById('pageRangeRow').style.display = 'none';
+  document.getElementById('pageTotalLabel').textContent = '';
 }
 
-async function extractTextFromPDF(file) {
+async function extractTextFromPDF(file, fromPage = null, toPage = null) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const start = fromPage ? Math.max(1, fromPage) : 1;
+  const end = toPage ? Math.min(pdf.numPages, toPage) : pdf.numPages;
   let text = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
+  for (let i = start; i <= end; i++) {
     const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map(item => item.str).join(' ') + '\n';
-    setLoader(true, `Extracting text... page ${i} of ${pdf.numPages}`);
+    const pageContent = await page.getTextContent();
+    text += pageContent.items.map(item => item.str).join(' ') + '\n';
+    setLoader(true, `Extracting text... page ${i} of ${end} (range: ${start}–${end})`);
   }
   return text;
 }
@@ -358,7 +384,10 @@ async function processFile() {
   try {
     let text = '';
     if (selectedFile.name.endsWith('.pdf')) {
-      text = await extractTextFromPDF(selectedFile);
+      const fromPage = parseInt(document.getElementById('pageFrom').value) || null;
+      const toPage = parseInt(document.getElementById('pageTo').value) || null;
+      if (fromPage) currentFileName = currentFileName + `-p${fromPage}-${toPage || 'end'}`;
+      text = await extractTextFromPDF(selectedFile, fromPage, toPage);
     } else {
       text = await extractTextFromDocx(selectedFile);
     }
