@@ -537,20 +537,25 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
 
       const chunkPrompt = `Summarize this portion of a book (part ${i+1} of ${chunks.length}). Use this EXACT markdown format:
 
-## Chapter/Section Title
+## Chapter 1: Title Here
 - Complete sentence bullet point.
 - Another complete sentence.
 
-Rules:
-- ALWAYS use ## for every chapter/section header
+## Chapter 2: Title Here
+- Bullet point here.
+
+CRITICAL RULES:
+- ALWAYS prefix each section with "Chapter X:" using the actual chapter number from the text
+- ALWAYS use ## for every chapter header
 - ALWAYS use - for every bullet point
 - ${lengthMap[length]}
 - ${langInstruction}
-- Never write plain paragraphs
-- Never use bold (**) text
-- Identify each chapter by its actual title or number
+- NEVER write plain paragraphs
+- NEVER use bold (**) text
+- NEVER repeat chapters already summarized in previous parts
+- Only summarize chapters that appear in this specific text excerpt
 
-Content:
+Content (part ${i+1} of ${chunks.length}):
 ${chunks[i]}`;
       const chunkResult = await callSummarizeAPI(chunkPrompt);
       if (chunkResult && chunkResult.trim()) {
@@ -576,8 +581,25 @@ ${chunks[i]}`;
       }
     }
 
-    // Combine chunks locally — no extra API call needed
-    raw = chunkSummaries.join('\n\n');
+    // Deduplicate and combine chunks locally
+    const seenHeaders = new Set();
+    const dedupedChunks = [];
+    for (const chunk of chunkSummaries) {
+      const lines = chunk.split('\n');
+      const filteredLines = [];
+      let skip = false;
+      for (const line of lines) {
+        if (line.startsWith('## ')) {
+          const header = line.trim().toLowerCase();
+          if (seenHeaders.has(header)) { skip = true; continue; }
+          seenHeaders.add(header);
+          skip = false;
+        }
+        if (!skip) filteredLines.push(line);
+      }
+      if (filteredLines.length > 0) dedupedChunks.push(filteredLines.join('\n'));
+    }
+    raw = dedupedChunks.join('\n\n');
 
   } else {
     const prompt = text.length > 200
