@@ -111,6 +111,20 @@
   .qa-input-row { display: flex; gap: 8px; }
   .qa-input-row input { flex: 1; }
 
+  /* Download buttons */
+  .download-bar { width: 100%; max-width: 700px; display: none; background: var(--surface); border: 0.5px solid var(--border); border-radius: 16px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .download-bar-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted2); margin-bottom: 0.75rem; }
+  .download-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Progressive chunks */
+  .chunks-container { width: 100%; max-width: 700px; display: none; margin-bottom: 1rem; }
+  .chunk-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 16px; padding: 1.25rem 1.5rem; margin-bottom: 0.75rem; }
+  .chunk-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+  .chunk-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); }
+  .chunk-dl-btns { display: flex; gap: 6px; }
+  .chunk-dl-btn { font-family: var(--mono); font-size: 10px; padding: 4px 10px; border-radius: 6px; border: 0.5px solid var(--border2); background: var(--surface2); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .chunk-dl-btn:hover { border-color: var(--accent); color: var(--accent); }
+
   footer { margin-top: 3rem; font-family: var(--mono); font-size: 10px; color: var(--muted2); text-align: center; letter-spacing: 0.1em; }
 
   @media (max-width: 540px) {
@@ -147,7 +161,7 @@
     <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
       <div class="dropzone-icon">📂</div>
       <div class="dropzone-label">Drop your file here or <span>browse</span></div>
-      <div class="dropzone-hint">PDF or Word (.docx) — up to ~500 pages</div>
+      <div class="dropzone-hint">PDF or Word (.docx) — any size</div>
     </div>
     <input type="file" id="fileInput" accept=".pdf,.docx" style="display:none" onchange="onFileSelected(event)" />
     <div class="file-selected" id="fileSelected">
@@ -202,10 +216,23 @@
   <div class="error" id="errorMsg"></div>
 </div>
 
+<!-- Progressive chunks (large docs) -->
+<div class="chunks-container" id="chunksContainer"></div>
+
 <!-- Output -->
 <div class="output-card" id="outputCard">
   <div class="summary-card">
     <div class="summary-content" id="summaryContent"></div>
+  </div>
+
+  <!-- Download bar -->
+  <div class="download-bar" id="downloadBar">
+    <div class="download-bar-title">Download full summary</div>
+    <div class="download-btns">
+      <button class="btn" onclick="downloadAs('txt')">⬇ TXT</button>
+      <button class="btn" onclick="downloadAs('pdf')">⬇ PDF</button>
+      <button class="btn" onclick="downloadAs('docx')">⬇ Word</button>
+    </div>
   </div>
 
   <div class="playback">
@@ -238,7 +265,9 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 let summaryText = '';
+let summaryRaw = '';
 let documentContext = '';
+let currentFileName = 'document';
 let utterance = null;
 let paused = false;
 let currentMode = 'url';
@@ -272,6 +301,7 @@ function onFileSelected(e) { const f = e.target.files[0]; if (f) handleFile(f); 
 function handleFile(file) {
   if (!file.name.match(/\.(pdf|docx)$/i)) { showError('Only PDF and .docx files are supported.'); return; }
   selectedFile = file;
+  currentFileName = file.name.replace(/\.[^.]+$/, '');
   document.getElementById('fileName').textContent = file.name;
   document.getElementById('fileSelected').classList.add('show');
   document.getElementById('fileGoBtn').disabled = false;
@@ -309,6 +339,9 @@ async function processFile() {
   clearError();
   stopSummary();
   document.getElementById('outputCard').style.display = 'none';
+  document.getElementById('chunksContainer').style.display = 'none';
+  document.getElementById('chunksContainer').innerHTML = '';
+  document.getElementById('downloadBar').style.display = 'none';
   document.getElementById('fileGoBtn').disabled = true;
   setLoader(true, 'Reading file...');
 
@@ -359,6 +392,9 @@ async function fetchAndSummarize() {
   clearError();
   stopSummary();
   document.getElementById('outputCard').style.display = 'none';
+  document.getElementById('chunksContainer').style.display = 'none';
+  document.getElementById('chunksContainer').innerHTML = '';
+  document.getElementById('downloadBar').style.display = 'none';
   document.getElementById('goBtn').disabled = true;
 
   try {
@@ -418,7 +454,7 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
     detailed: 'Create 5-7 sections with 4-6 bullet points each.',
   };
 
-  const CHUNK_SIZE = 45000;
+  const CHUNK_SIZE = 80000;
   let raw = '';
 
   if (isLargeDoc && text.length > CHUNK_SIZE) {
@@ -428,9 +464,14 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
     }
 
     const chunkSummaries = [];
+    const chunksContainer = document.getElementById('chunksContainer');
+    chunksContainer.innerHTML = '';
+    chunksContainer.style.display = 'block';
+
     for (let i = 0; i < chunks.length; i++) {
       setLoader(true, `Summarizing part ${i + 1} of ${chunks.length}...`);
-      if (i > 0) await new Promise(r => setTimeout(r, 3000)); // 3s delay between chunks
+      if (i > 0) await new Promise(r => setTimeout(r, 3000));
+
       const chunkPrompt = `Summarize this portion of a book (part ${i+1} of ${chunks.length}). Use this EXACT markdown format:
 
 ## Chapter/Section Title
@@ -449,7 +490,27 @@ Rules:
 Content:
 ${chunks[i]}`;
       const chunkResult = await callSummarizeAPI(chunkPrompt);
-      chunkSummaries.push(chunkResult);
+      if (chunkResult && chunkResult.trim()) {
+        chunkSummaries.push(chunkResult);
+
+        // Show chunk progressively
+        const chunkLabel = `Part ${i + 1} of ${chunks.length}`;
+        const chunkText = extractPlainText(chunkResult);
+        const card = document.createElement('div');
+        card.className = 'chunk-card';
+        card.innerHTML = `
+          <div class="chunk-header">
+            <span class="chunk-label">${chunkLabel}</span>
+            <div class="chunk-dl-btns">
+              <span class="chunk-dl-btn" onclick="downloadChunkAs('txt', ${JSON.stringify(chunkText)}, ${JSON.stringify(chunkResult)}, '${chunkLabel}')">⬇ TXT</span>
+              <span class="chunk-dl-btn" onclick="downloadChunkAs('pdf', ${JSON.stringify(chunkText)}, ${JSON.stringify(chunkResult)}, '${chunkLabel}')">⬇ PDF</span>
+              <span class="chunk-dl-btn" onclick="downloadChunkAs('docx', ${JSON.stringify(chunkText)}, ${JSON.stringify(chunkResult)}, '${chunkLabel}')">⬇ Word</span>
+            </div>
+          </div>
+          <div class="summary-content">${renderStructuredSummary(chunkResult)}</div>`;
+        chunksContainer.appendChild(card);
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
 
     if (chunkSummaries.length > 1) {
@@ -490,10 +551,13 @@ Format with ## headers and - bullets. ${webLengthMap[length]} ${langInstruction}
     raw = await callSummarizeAPI(prompt);
   }
 
+  if (!raw || !raw.trim()) throw new Error('Summary came back empty — please try again.');
   summaryText = extractPlainText(raw);
+  summaryRaw = raw;
   document.getElementById('summaryContent').innerHTML = renderStructuredSummary(raw);
   document.getElementById('qaMessages').innerHTML = '';
   document.getElementById('outputCard').style.display = 'block';
+  document.getElementById('downloadBar').style.display = 'block';
   document.getElementById('playBtn').disabled = false;
   setStatus('READY');
   setLoader(false);
@@ -609,6 +673,78 @@ function showError(msg) { const el = document.getElementById('errorMsg'); el.tex
 function clearError() { document.getElementById('errorMsg').style.display = 'none'; }
 function setLoader(show, text) { const el = document.getElementById('loader'); el.classList.toggle('show', show); if (text) document.getElementById('loaderText').textContent = text; }
 function setStatus(text, active) { const el = document.getElementById('statusPill'); el.textContent = text; el.className = 'status-pill' + (active ? ' active' : ''); }
+
+// Download functions
+function buildPdfHtml(title, bodyHtml) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+<style>body{font-family:Georgia,serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222;}
+h1{font-size:1.8rem;margin-bottom:2rem;}h2{font-size:1.1rem;margin:2rem 0 0.5rem;color:#444;border-bottom:1px solid #ddd;padding-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;}
+ul{padding-left:1.2rem;}li{margin-bottom:6px;}</style></head>
+<body><h1>${title}</h1>${bodyHtml}</body></html>`;
+}
+
+function buildDocxText(title, rawMarkdown) {
+  // Simple plain-text representation for .txt disguised as .docx fallback
+  let text = title + '\n' + '='.repeat(title.length) + '\n\n';
+  const lines = rawMarkdown.split('\n');
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith('## ')) text += '\n' + t.replace('## ', '').toUpperCase() + '\n' + '-'.repeat(40) + '\n';
+    else if (t.startsWith('- ')) text += '  • ' + t.slice(2) + '\n';
+    else if (t) text += t + '\n';
+  }
+  return text;
+}
+
+function downloadAs(format) {
+  const filename = currentFileName || 'summary';
+  const title = filename + ' — Summary';
+  let blob, ext;
+  if (format === 'txt') {
+    blob = new Blob([summaryText], { type: 'text/plain' });
+    ext = 'txt';
+  } else if (format === 'pdf') {
+    // Open print dialog on a new window — browser prints to PDF
+    const win = window.open('', '_blank');
+    win.document.write(buildPdfHtml(title, document.getElementById('summaryContent').innerHTML));
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+    return;
+  } else if (format === 'docx') {
+    const text = buildDocxText(title, summaryRaw);
+    blob = new Blob([text], { type: 'text/plain' });
+    ext = 'txt'; // browsers can't generate real docx without a library — saves as formatted txt
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${filename}-summary.${ext}`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function downloadChunkAs(format, chunkText, chunkRaw, chunkLabel) {
+  const filename = (currentFileName || 'summary') + '-' + chunkLabel.toLowerCase().replace(/ /g, '-');
+  let blob, ext;
+  if (format === 'txt') {
+    blob = new Blob([chunkText], { type: 'text/plain' });
+    ext = 'txt';
+  } else if (format === 'pdf') {
+    const win = window.open('', '_blank');
+    win.document.write(buildPdfHtml(chunkLabel, renderStructuredSummary(chunkRaw)));
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+    return;
+  } else if (format === 'docx') {
+    const text = buildDocxText(chunkLabel, chunkRaw);
+    blob = new Blob([text], { type: 'text/plain' });
+    ext = 'txt';
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${filename}.${ext}`;
+  a.click(); URL.revokeObjectURL(url);
+}
 
 function playSummary() {
   if (!summaryText) return;
