@@ -9,8 +9,17 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
-    const { prompt } = req.body;
-    if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+    const { question, context } = req.body;
+    if (!question || !context) return res.status(400).json({ error: 'Missing question or context' });
+
+    const prompt = `You are a helpful assistant answering questions about a document. 
+Here is the document content:
+
+${context.slice(0, 50000)}
+
+Answer this question clearly and concisely: ${question}
+
+Write in plain spoken English. No markdown, no bullet points — just a natural conversational answer of 2-4 sentences.`;
 
     const resp = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -19,7 +28,7 @@ export default async function handler(req, res) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 4096, temperature: 0.7 }
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
         })
       }
     );
