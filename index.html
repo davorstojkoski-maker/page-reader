@@ -348,6 +348,7 @@ function clearFile() {
   document.getElementById('fileGoBtn').disabled = true;
   document.getElementById('pageRangeRow').style.display = 'none';
   document.getElementById('pageTotalLabel').textContent = '';
+  isProcessing = false;
 }
 
 async function extractTextFromPDF(file, fromPage = null, toPage = null) {
@@ -375,7 +376,6 @@ async function processFile() {
   if (!selectedFile) return;
   clearError();
   stopSummary();
-  if (isProcessing) return; // prevent double-run
   isProcessing = true;
   document.getElementById('outputCard').style.display = 'none';
   document.getElementById('chunksContainer').style.display = 'none';
