@@ -289,6 +289,7 @@ let utterance = null;
 let paused = false;
 let currentMode = 'url';
 let selectedFile = null;
+let isProcessing = false;
 
 const PROXIES = [
   url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
@@ -374,6 +375,8 @@ async function processFile() {
   if (!selectedFile) return;
   clearError();
   stopSummary();
+  if (isProcessing) return; // prevent double-run
+  isProcessing = true;
   document.getElementById('outputCard').style.display = 'none';
   document.getElementById('chunksContainer').style.display = 'none';
   document.getElementById('chunksContainer').innerHTML = '';
@@ -397,8 +400,10 @@ async function processFile() {
 
     const isLarge = text.length > 20000;
     await generateSummary(text, isLarge);
+    isProcessing = false;
     document.getElementById('fileGoBtn').disabled = false;
   } catch(err) {
+    isProcessing = false;
     setLoader(false);
     document.getElementById('fileGoBtn').disabled = false;
     showError('Error reading file: ' + err.message);
@@ -530,6 +535,7 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
     const chunksContainer = document.getElementById('chunksContainer');
     chunksContainer.innerHTML = '';
     chunksContainer.style.display = 'block';
+    window.scrollTo({ top: chunksContainer.offsetTop - 20, behavior: 'smooth' });
 
     for (let i = 0; i < chunks.length; i++) {
       setLoader(true, `Summarizing part ${i + 1} of ${chunks.length}...`);
@@ -566,6 +572,7 @@ ${chunks[i]}`;
         const chunkText = extractPlainText(chunkResult);
         const card = document.createElement('div');
         card.className = 'chunk-card';
+        card.id = `chunk-card-${i}`;
         card.innerHTML = `
           <div class="chunk-header">
             <span class="chunk-label">${chunkLabel}</span>
@@ -576,30 +583,19 @@ ${chunks[i]}`;
             </div>
           </div>
           <div class="summary-content">${renderStructuredSummary(chunkResult)}</div>`;
-        chunksContainer.appendChild(card);
-        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Only add if not already added (protect against double-run)
+        if (!document.getElementById(`chunk-card-${i}`)) {
+          chunksContainer.appendChild(card);
+        }
+        // Only scroll to top of chunks container on first chunk
+        if (chunkSummaries.length === 1) {
+          chunksContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
     }
 
-    // Deduplicate and combine chunks locally
-    const seenHeaders = new Set();
-    const dedupedChunks = [];
-    for (const chunk of chunkSummaries) {
-      const lines = chunk.split('\n');
-      const filteredLines = [];
-      let skip = false;
-      for (const line of lines) {
-        if (line.startsWith('## ')) {
-          const header = line.trim().toLowerCase();
-          if (seenHeaders.has(header)) { skip = true; continue; }
-          seenHeaders.add(header);
-          skip = false;
-        }
-        if (!skip) filteredLines.push(line);
-      }
-      if (filteredLines.length > 0) dedupedChunks.push(filteredLines.join('\n'));
-    }
-    raw = dedupedChunks.join('\n\n');
+    // Combine chunks locally
+    raw = chunkSummaries.join('\n\n');
 
   } else {
     const prompt = text.length > 200
