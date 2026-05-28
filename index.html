@@ -373,6 +373,20 @@ async function fetchAndSummarize() {
   }
 }
 
+async function callSummarizeAPI(prompt) {
+  const resp = await fetch('/api/summarize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+  if (!resp.ok) {
+    const err = await resp.json();
+    throw new Error(err.error || `API error ${resp.status}`);
+  }
+  const result = await resp.json();
+  return result.text || '';
+}
+
 async function generateSummary(text, isLargeDoc = false, url = '') {
   const length = document.getElementById('lengthSelect').value;
   const lang = document.getElementById('langSelect').value;
@@ -381,15 +395,65 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
     : `Write the summary in ${lang}, regardless of the source language.`;
 
   const lengthMap = {
-    short: isLargeDoc ? 'Create one section per chapter/major section with 2-3 bullet points each.' : 'Create 2-3 sections with 2-3 bullet points each.',
-    medium: isLargeDoc ? 'Create one section per chapter/major section with 3-4 bullet points each.' : 'Create 3-5 sections with 3-5 bullet points each.',
-    detailed: isLargeDoc ? 'Create one section per chapter/major section with 4-6 bullet points each, capturing all key ideas.' : 'Create 5-7 sections with 4-6 bullet points each.',
+    short: 'Create one section per chapter with 2-3 bullet points each.',
+    medium: 'Create one section per chapter with 3-4 bullet points each.',
+    detailed: 'Create one section per chapter with 4-6 bullet points each.',
+  };
+  const webLengthMap = {
+    short: 'Create 2-3 sections with 2-3 bullet points each.',
+    medium: 'Create 3-5 sections with 3-5 bullet points each.',
+    detailed: 'Create 5-7 sections with 4-6 bullet points each.',
   };
 
-  const chapterNote = isLargeDoc ? '\nThis is a large document. Identify chapters or major sections and create one ## header per chapter/section.' : '';
+  const CHUNK_SIZE = 45000;
+  let raw = '';
 
-  const prompt = text.length > 200
-    ? `Summarize the following content. You MUST use this exact markdown format:
+  if (isLargeDoc && text.length > CHUNK_SIZE) {
+    const chunks = [];
+    for (let i = 0; i < text.length; i += CHUNK_SIZE) {
+      chunks.push(text.slice(i, i + CHUNK_SIZE));
+    }
+
+    const chunkSummaries = [];
+    for (let i = 0; i < chunks.length; i++) {
+      setLoader(true, `Summarizing part ${i + 1} of ${chunks.length}...`);
+      const chunkPrompt = `Summarize this portion of a book (part ${i+1} of ${chunks.length}). Use this EXACT markdown format:
+
+## Chapter/Section Title
+- Complete sentence bullet point.
+- Another complete sentence.
+
+Rules:
+- ALWAYS use ## for every chapter/section header
+- ALWAYS use - for every bullet point
+- ${lengthMap[length]}
+- ${langInstruction}
+- Never write plain paragraphs
+- Never use bold (**) text
+- Identify each chapter by its actual title or number
+
+Content:
+${chunks[i]}`;
+      const chunkResult = await callSummarizeAPI(chunkPrompt);
+      chunkSummaries.push(chunkResult);
+    }
+
+    if (chunkSummaries.length > 1) {
+      setLoader(true, 'Combining all chapters...');
+      const mergePrompt = `Below are summaries of consecutive parts of a book. Combine them into one clean summary keeping all chapters. Remove any duplicate chapters. Keep the exact same markdown format:
+
+## Chapter Title
+- Bullet point.
+
+${chunkSummaries.join('\n\n')}`;
+      raw = await callSummarizeAPI(mergePrompt);
+    } else {
+      raw = chunkSummaries[0];
+    }
+
+  } else {
+    const prompt = text.length > 200
+      ? `Summarize the following content. You MUST use this exact markdown format:
 
 ## Section or Chapter Title
 - Complete sentence bullet point.
@@ -397,33 +461,20 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
 
 Rules:
 - ALWAYS use ## for every section/chapter header
-- ALWAYS use - for every bullet point  
-- ${lengthMap[length]}
+- ALWAYS use - for every bullet point
+- ${isLargeDoc ? lengthMap[length] : webLengthMap[length]}
 - ${langInstruction}
 - Never write plain paragraphs outside of bullets
-- Never use bold (**) text${chapterNote}
+- Never use bold (**) text
 
 ${url ? `Source URL: ${url}\n` : ''}Content:
 ${text.slice(0, 50000)}`
-    : `Summarize what this URL is likely about: ${url}
+      : `Summarize what this URL is likely about: ${url}
+Format with ## headers and - bullets. ${webLengthMap[length]} ${langInstruction}`;
 
-Format with ## headers and - bullets. ${lengthMap[length]} ${langInstruction}`;
-
-  setLoader(true, isLargeDoc ? 'Analyzing document chapters...' : 'Generating summary...');
-
-  const resp = await fetch('/api/summarize', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt })
-  });
-
-  if (!resp.ok) {
-    const err = await resp.json();
-    throw new Error(err.error || `API error ${resp.status}`);
+    setLoader(true, 'Generating summary...');
+    raw = await callSummarizeAPI(prompt);
   }
-
-  const result = await resp.json();
-  const raw = result.text || 'Could not generate summary.';
 
   summaryText = extractPlainText(raw);
   document.getElementById('summaryContent').innerHTML = renderStructuredSummary(raw);
