@@ -291,6 +291,8 @@ let currentMode = 'url';
 let selectedFile = null;
 let isProcessing = false;
 let chunkStore = []; // stores chunk data for downloads
+let playQueue = []; // splits long text for speech
+let playQueueIndex = 0;
 
 const PROXIES = [
   url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
@@ -856,6 +858,40 @@ async function downloadChunkAs(format, chunkText, chunkRaw, chunkLabel) {
   a.click(); URL.revokeObjectURL(url);
 }
 
+function splitIntoPlayChunks(text, maxLen = 2000) {
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  const chunks = [];
+  let current = '';
+  for (const s of sentences) {
+    if ((current + s).length > maxLen) {
+      if (current) chunks.push(current.trim());
+      current = s;
+    } else {
+      current += ' ' + s;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+}
+
+function playNextInQueue() {
+  if (playQueueIndex >= playQueue.length) {
+    setStatus('DONE');
+    paused = false;
+    document.getElementById('playBtn').disabled = false;
+    document.getElementById('pauseBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = true;
+    return;
+  }
+  utterance = new SpeechSynthesisUtterance(playQueue[playQueueIndex]);
+  utterance.rate = parseFloat(document.getElementById('speedSlider').value);
+  const voice = getVoice();
+  if (voice) utterance.voice = voice;
+  utterance.onend = () => { playQueueIndex++; playNextInQueue(); };
+  utterance.onerror = (e) => { if (e.error === 'interrupted') return; setStatus('ERROR'); showError('Speech error — try a different voice.'); };
+  speechSynthesis.speak(utterance);
+}
+
 function playSummary() {
   if (!summaryText) return;
   if (paused && utterance) {
@@ -866,14 +902,13 @@ function playSummary() {
     setStatus('PLAYING', true); return;
   }
   speechSynthesis.cancel();
-  utterance = new SpeechSynthesisUtterance(summaryText);
-  utterance.rate = parseFloat(document.getElementById('speedSlider').value);
-  const voice = getVoice();
-  if (voice) utterance.voice = voice;
-  utterance.onstart = () => { setStatus('PLAYING', true); document.getElementById('playBtn').disabled = true; document.getElementById('pauseBtn').disabled = false; document.getElementById('stopBtn').disabled = false; };
-  utterance.onend = () => { setStatus('DONE'); paused = false; document.getElementById('playBtn').disabled = false; document.getElementById('pauseBtn').disabled = true; document.getElementById('stopBtn').disabled = true; };
-  utterance.onerror = (e) => { if (e.error === 'interrupted') return; setStatus('ERROR'); showError('Speech error — try a different voice.'); };
-  speechSynthesis.speak(utterance);
+  playQueue = splitIntoPlayChunks(summaryText);
+  playQueueIndex = 0;
+  setStatus('PLAYING', true);
+  document.getElementById('playBtn').disabled = true;
+  document.getElementById('pauseBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = false;
+  playNextInQueue();
 }
 
 function pauseSummary() {
@@ -886,7 +921,11 @@ function pauseSummary() {
 }
 
 function stopSummary() {
-  speechSynthesis.cancel(); paused = false; utterance = null;
+  speechSynthesis.cancel(); 
+  paused = false; 
+  utterance = null;
+  playQueue = [];
+  playQueueIndex = 0;
   document.getElementById('playBtn').disabled = false;
   document.getElementById('pauseBtn').disabled = true;
   document.getElementById('stopBtn').disabled = true;
