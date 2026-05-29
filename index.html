@@ -763,60 +763,84 @@ function setLoader(show, text) { const el = document.getElementById('loader'); e
 function setStatus(text, active) { const el = document.getElementById('statusPill'); el.textContent = text; el.className = 'status-pill' + (active ? ' active' : ''); }
 
 // Download functions
-function buildPdfHtml(title, bodyHtml) {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
-<style>body{font-family:Georgia,serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222;}
-h1{font-size:1.8rem;margin-bottom:2rem;}h2{font-size:1.1rem;margin:2rem 0 0.5rem;color:#444;border-bottom:1px solid #ddd;padding-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;}
-ul{padding-left:1.2rem;}li{margin-bottom:6px;}</style></head>
-<body><h1>${title}</h1>${bodyHtml}</body></html>`;
-}
-
-function buildDocxText(title, rawMarkdown) {
-  // Simple plain-text representation for .txt disguised as .docx fallback
-  let text = title + '\n' + '='.repeat(title.length) + '\n\n';
-  const lines = rawMarkdown.split('\n');
+function mdToHtml(raw) {
+  const lines = raw.split('\n');
+  let html = '';
+  let inList = false;
   for (const line of lines) {
     const t = line.trim();
-    if (t.startsWith('## ')) text += '\n' + t.replace('## ', '').toUpperCase() + '\n' + '-'.repeat(40) + '\n';
-    else if (t.startsWith('- ')) text += '  • ' + t.slice(2) + '\n';
-    else if (t) text += t + '\n';
+    if (t.startsWith('## ') || t.startsWith('# ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h2>${t.replace(/^#+\s*/, '')}</h2>`;
+    } else if (t.startsWith('- ') || t.startsWith('* ')) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += `<li>${t.replace(/^[-*]\s*/, '')}</li>`;
+    } else if (t) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<p>${t}</p>`;
+    }
   }
-  return text;
+  if (inList) html += '</ul>';
+  return html;
+}
+
+function mdToPlainText(raw) {
+  const lines = raw.split('\n');
+  let out = '';
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith('## ') || t.startsWith('# ')) {
+      const title = t.replace(/^#+\s*/, '');
+      out += '\n' + title + '\n' + '-'.repeat(title.length) + '\n';
+    } else if (t.startsWith('- ') || t.startsWith('* ')) {
+      out += '  • ' + t.replace(/^[-*]\s*/, '') + '\n';
+    } else if (t) {
+      out += t + '\n';
+    }
+  }
+  return out.trim();
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function makeWordDoc(title, raw) {
+  // Word opens HTML files saved as .doc perfectly, preserving formatting
+  const body = mdToHtml(raw);
+  const html = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta charset='utf-8'><title>${title}</title>
+<style>body{font-family:Calibri,sans-serif;line-height:1.6;}h1{font-size:20pt;}h2{font-size:14pt;color:#2a2a2a;margin-top:18pt;}ul{margin-left:0;}li{margin-bottom:6pt;}</style></head>
+<body><h1>${title}</h1>${body}</body></html>`;
+  return new Blob([html], { type: 'application/msword' });
+}
+
+function makePrintWindow(title, raw) {
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+<style>body{font-family:Georgia,serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222;}
+h1{font-size:1.8rem;margin-bottom:1.5rem;}h2{font-size:1.15rem;margin:1.8rem 0 0.5rem;color:#444;border-bottom:1px solid #ddd;padding-bottom:4px;}
+ul{padding-left:1.3rem;}li{margin-bottom:6px;}</style></head>
+<body><h1>${title}</h1>${mdToHtml(raw)}</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 600);
 }
 
 async function downloadAs(format) {
   const filename = currentFileName || 'summary';
   const title = filename + ' — Summary';
-  let blob, ext;
   if (format === 'txt') {
-    blob = new Blob([summaryText], { type: 'text/plain' });
-    ext = 'txt';
+    triggerDownload(new Blob([mdToPlainText(summaryRaw)], { type: 'text/plain' }), `${filename}-summary.txt`);
   } else if (format === 'pdf') {
-    // Open print dialog on a new window — browser prints to PDF
-    const win = window.open('', '_blank');
-    win.document.write(buildPdfHtml(title, document.getElementById('summaryContent').innerHTML));
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 500);
-    return;
+    makePrintWindow(title, summaryRaw);
   } else if (format === 'docx') {
-    const resp = await fetch('/api/docx', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, markdown: summaryRaw })
-    });
-    if (!resp.ok) { alert('Word download failed'); return; }
-    const docBlob = await resp.blob();
-    const url = URL.createObjectURL(docBlob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${filename}-summary.docx`;
-    a.click(); URL.revokeObjectURL(url);
-    return;
+    triggerDownload(makeWordDoc(title, summaryRaw), `${filename}-summary.doc`);
   }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${filename}-summary.${ext}`;
-  a.click(); URL.revokeObjectURL(url);
 }
 
 function downloadChunkByIndex(index, format) {
@@ -827,35 +851,13 @@ function downloadChunkByIndex(index, format) {
 
 async function downloadChunkAs(format, chunkText, chunkRaw, chunkLabel) {
   const filename = (currentFileName || 'summary') + '-' + chunkLabel.toLowerCase().replace(/ /g, '-');
-  let blob, ext;
   if (format === 'txt') {
-    blob = new Blob([chunkText], { type: 'text/plain' });
-    ext = 'txt';
+    triggerDownload(new Blob([mdToPlainText(chunkRaw)], { type: 'text/plain' }), `${filename}.txt`);
   } else if (format === 'pdf') {
-    const win = window.open('', '_blank');
-    win.document.write(buildPdfHtml(chunkLabel, renderStructuredSummary(chunkRaw)));
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 500);
-    return;
+    makePrintWindow(chunkLabel, chunkRaw);
   } else if (format === 'docx') {
-    const resp = await fetch('/api/docx', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: chunkLabel, markdown: chunkRaw })
-    });
-    if (!resp.ok) { alert('Word download failed'); return; }
-    const docBlob = await resp.blob();
-    const url = URL.createObjectURL(docBlob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${filename}.docx`;
-    a.click(); URL.revokeObjectURL(url);
-    return;
+    triggerDownload(makeWordDoc(chunkLabel, chunkRaw), `${filename}.doc`);
   }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${filename}.${ext}`;
-  a.click(); URL.revokeObjectURL(url);
 }
 
 function splitIntoPlayChunks(text, maxLen = 2000) {
