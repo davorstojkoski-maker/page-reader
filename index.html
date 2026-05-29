@@ -477,7 +477,7 @@ async function fetchAndSummarize() {
   }
 }
 
-async function callSummarizeAPI(prompt, retries = 3) {
+async function callSummarizeAPI(prompt, retries = 6) {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const resp = await fetch('/api/summarize', {
@@ -486,7 +486,7 @@ async function callSummarizeAPI(prompt, retries = 3) {
         body: JSON.stringify({ prompt })
       });
       if (resp.status === 429 || resp.status === 503) {
-        const waitSecs = (attempt + 1) * 20;
+        const waitSecs = Math.min((attempt + 1) * 15, 60);
         setLoader(true, `Rate limit hit — waiting ${waitSecs}s before retry...`);
         await new Promise(r => setTimeout(r, waitSecs * 1000));
         continue;
