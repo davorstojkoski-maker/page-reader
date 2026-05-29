@@ -290,6 +290,7 @@ let paused = false;
 let currentMode = 'url';
 let selectedFile = null;
 let isProcessing = false;
+let chunkStore = []; // stores chunk data for downloads
 
 const PROXIES = [
   url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
@@ -532,6 +533,7 @@ async function generateSummary(text, isLargeDoc = false, url = '') {
     }
 
     const chunkSummaries = [];
+    chunkStore = [];
     const chunksContainer = document.getElementById('chunksContainer');
     chunksContainer.innerHTML = '';
     chunksContainer.style.display = 'block';
@@ -570,6 +572,9 @@ ${chunks[i]}`;
         // Show chunk progressively
         const chunkLabel = `Part ${i + 1} of ${chunks.length}`;
         const chunkText = extractPlainText(chunkResult);
+        const chunkIndex = chunkStore.length;
+        chunkStore.push({ text: chunkText, raw: chunkResult, label: chunkLabel });
+
         const card = document.createElement('div');
         card.className = 'chunk-card';
         card.id = `chunk-card-${i}`;
@@ -577,9 +582,9 @@ ${chunks[i]}`;
           <div class="chunk-header">
             <span class="chunk-label">${chunkLabel}</span>
             <div class="chunk-dl-btns">
-              <span class="chunk-dl-btn" onclick="downloadChunkAs('txt', ${JSON.stringify(chunkText)}, ${JSON.stringify(chunkResult)}, '${chunkLabel}')">⬇ TXT</span>
-              <span class="chunk-dl-btn" onclick="downloadChunkAs('pdf', ${JSON.stringify(chunkText)}, ${JSON.stringify(chunkResult)}, '${chunkLabel}')">⬇ PDF</span>
-              <span class="chunk-dl-btn" onclick="downloadChunkAs('docx', ${JSON.stringify(chunkText)}, ${JSON.stringify(chunkResult)}, '${chunkLabel}')">⬇ Word</span>
+              <span class="chunk-dl-btn" onclick="downloadChunkByIndex(${chunkIndex}, 'txt')">⬇ TXT</span>
+              <span class="chunk-dl-btn" onclick="downloadChunkByIndex(${chunkIndex}, 'pdf')">⬇ PDF</span>
+              <span class="chunk-dl-btn" onclick="downloadChunkByIndex(${chunkIndex}, 'docx')">⬇ Word</span>
             </div>
           </div>
           <div class="summary-content">${renderStructuredSummary(chunkResult)}</div>`;
@@ -623,14 +628,26 @@ Format with ## headers and - bullets. ${webLengthMap[length]} ${langInstruction}
   if (!raw || !raw.trim()) throw new Error('Summary came back empty — please try again.');
   summaryText = extractPlainText(raw);
   summaryRaw = raw;
-  document.getElementById('summaryContent').innerHTML = renderStructuredSummary(raw);
-  document.getElementById('qaMessages').innerHTML = '';
-  document.getElementById('outputCard').style.display = 'block';
-  document.getElementById('downloadBar').style.display = 'block';
-  document.getElementById('playBtn').disabled = false;
-  setStatus('READY');
-  setLoader(false);
-  document.getElementById('outputCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  if (isLargeDoc) {
+    // For large docs, chunks are already displayed — just show download bar and playback
+    document.getElementById('summaryContent').innerHTML = '';
+    document.getElementById('qaMessages').innerHTML = '';
+    document.getElementById('outputCard').style.display = 'block';
+    document.getElementById('downloadBar').style.display = 'block';
+    document.getElementById('playBtn').disabled = false;
+    setStatus('READY');
+    setLoader(false);
+  } else {
+    document.getElementById('summaryContent').innerHTML = renderStructuredSummary(raw);
+    document.getElementById('qaMessages').innerHTML = '';
+    document.getElementById('outputCard').style.display = 'block';
+    document.getElementById('downloadBar').style.display = 'block';
+    document.getElementById('playBtn').disabled = false;
+    setStatus('READY');
+    setLoader(false);
+    document.getElementById('outputCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 // Q&A
@@ -765,7 +782,7 @@ function buildDocxText(title, rawMarkdown) {
   return text;
 }
 
-function downloadAs(format) {
+async function downloadAs(format) {
   const filename = currentFileName || 'summary';
   const title = filename + ' — Summary';
   let blob, ext;
@@ -781,9 +798,18 @@ function downloadAs(format) {
     setTimeout(() => win.print(), 500);
     return;
   } else if (format === 'docx') {
-    const text = buildDocxText(title, summaryRaw);
-    blob = new Blob([text], { type: 'text/plain' });
-    ext = 'txt'; // browsers can't generate real docx without a library — saves as formatted txt
+    const resp = await fetch('/api/docx', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, markdown: summaryRaw })
+    });
+    if (!resp.ok) { alert('Word download failed'); return; }
+    const docBlob = await resp.blob();
+    const url = URL.createObjectURL(docBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${filename}-summary.docx`;
+    a.click(); URL.revokeObjectURL(url);
+    return;
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -791,7 +817,13 @@ function downloadAs(format) {
   a.click(); URL.revokeObjectURL(url);
 }
 
-function downloadChunkAs(format, chunkText, chunkRaw, chunkLabel) {
+function downloadChunkByIndex(index, format) {
+  const chunk = chunkStore[index];
+  if (!chunk) return;
+  downloadChunkAs(format, chunk.text, chunk.raw, chunk.label);
+}
+
+async function downloadChunkAs(format, chunkText, chunkRaw, chunkLabel) {
   const filename = (currentFileName || 'summary') + '-' + chunkLabel.toLowerCase().replace(/ /g, '-');
   let blob, ext;
   if (format === 'txt') {
@@ -805,9 +837,18 @@ function downloadChunkAs(format, chunkText, chunkRaw, chunkLabel) {
     setTimeout(() => win.print(), 500);
     return;
   } else if (format === 'docx') {
-    const text = buildDocxText(chunkLabel, chunkRaw);
-    blob = new Blob([text], { type: 'text/plain' });
-    ext = 'txt';
+    const resp = await fetch('/api/docx', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: chunkLabel, markdown: chunkRaw })
+    });
+    if (!resp.ok) { alert('Word download failed'); return; }
+    const docBlob = await resp.blob();
+    const url = URL.createObjectURL(docBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${filename}.docx`;
+    a.click(); URL.revokeObjectURL(url);
+    return;
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
